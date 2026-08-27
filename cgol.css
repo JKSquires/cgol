@@ -1,0 +1,17 @@
+body {
+	margin: 0;
+
+	background-color: #000;
+}
+
+#controls {
+	padding: 10px;
+
+	background-color: #ccc;
+
+	border-radius: 8px;
+
+	position: absolute;
+	top: 10px;
+	left: 10px;
+}

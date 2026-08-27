@@ -1,8 +1,10 @@
 const game_area = document.getElementById("game_area");
+const step_time_slider = document.getElementById("step_time_slider");
+const toggle_run_button = document.getElementById("toggle_run_button");
 
 const game_area_context = game_area.getContext("2d");
 let run = true;
-let step_time = 333;
+let step_time = step_time_slider.value;
 
 
 function makePixelLive(buffer_image, row, col) {
@@ -64,9 +66,22 @@ function step() {
 	setTimeout(step, step_time);
 }
 
+function toggle_run() {
+	run = !run;
+
+	toggle_run_button.innerText = run ? "Pause" : "Unpause";
+}
+
 
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
+
+toggle_run_button.addEventListener("click", toggle_run);
+toggle_run();
+
+step_time_slider.addEventListener("change", () => {
+	step_time = step_time_slider.value;
+});
 
 step();
 
