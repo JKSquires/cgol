@@ -15,3 +15,7 @@ body {
 	top: 10px;
 	left: 10px;
 }
+
+#controls_drag {
+	cursor: move;
+}

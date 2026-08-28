@@ -1,10 +1,13 @@
 const game_area = document.getElementById("game_area");
+const controls = document.getElementById("controls");
+const controls_drag = document.getElementById("controls_drag");
 const step_time_slider = document.getElementById("step_time_slider");
 const toggle_run_button = document.getElementById("toggle_run_button");
 
 const game_area_context = game_area.getContext("2d");
 let run = true;
 let step_time = step_time_slider.value;
+let drag_controls = false;
 
 
 function makePixelLive(buffer_image, row, col) {
@@ -64,6 +67,8 @@ function toggle_run() {
 }
 
 function setPixel(mouse_event) {
+	if (drag_controls) return;
+
 	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
 
 	if (mouse_event.buttons & 1) makePixelLive(game_area_image, mouse_event.clientY, mouse_event.clientX);
@@ -75,6 +80,21 @@ function setPixel(mouse_event) {
 
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
+
+controls_drag.addEventListener("mousedown", () => {
+	drag_controls = true;
+});
+
+document.addEventListener("mouseup", () => {
+	drag_controls = false;
+});
+
+document.addEventListener("mousemove", (e) => {
+	if (drag_controls) {
+		controls.style.top = (controls.offsetTop + e.movementY) + "px";
+		controls.style.left = (controls.offsetLeft + e.movementX) + "px";
+	}
+});
 
 toggle_run_button.addEventListener("click", toggle_run);
 toggle_run();
