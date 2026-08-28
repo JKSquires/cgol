@@ -21,15 +21,6 @@ function makePixelDead(buffer_image, row, col) {
 	buffer_image.data[row * (game_area.width * 4) + col * 4 + 3] = 0;
 }
 
-function togglePixel(row, col) {
-	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
-
-	if (game_area_image.data[row * (game_area.width * 4) + col * 4]) makePixelDead(game_area_image, row, col);
-	else makePixelLive(game_area_image, row, col);
-
-	game_area_context.putImageData(game_area_image, 0, 0);
-}
-
 function draw() {
 	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
 	const buffer_image = game_area_context.createImageData(game_area_image);
@@ -72,6 +63,15 @@ function toggle_run() {
 	toggle_run_button.innerText = run ? "Pause" : "Unpause";
 }
 
+function setPixel(mouse_event) {
+	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
+
+	if (mouse_event.buttons & 1) makePixelLive(game_area_image, mouse_event.clientY, mouse_event.clientX);
+	if (mouse_event.buttons & 2) makePixelDead(game_area_image, mouse_event.clientY, mouse_event.clientX);
+
+	game_area_context.putImageData(game_area_image, 0, 0);
+}
+
 
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
@@ -83,13 +83,7 @@ step_time_slider.addEventListener("change", () => {
 	step_time = step_time_slider.value;
 });
 
-game_area.addEventListener("mousemove", (e) => {
-	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
-
-	if (e.buttons & 1) makePixelLive(game_area_image, e.clientY, e.clientX);
-	if (e.buttons & 2) makePixelDead(game_area_image, e.clientY, e.clientX);
-
-	game_area_context.putImageData(game_area_image, 0, 0);
-});
+game_area.addEventListener("mousemove", setPixel);
+game_area.addEventListener("mousedown", setPixel);
 
 step();
