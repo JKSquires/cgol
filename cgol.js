@@ -83,5 +83,8 @@ step_time_slider.addEventListener("change", () => {
 	step_time = step_time_slider.value;
 });
 
-step();
+game_area.addEventListener("mousemove", (e) => {
+	if (e.buttons) togglePixel(e.clientY, e.clientX);
+});
 
+step();
