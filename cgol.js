@@ -84,7 +84,12 @@ step_time_slider.addEventListener("change", () => {
 });
 
 game_area.addEventListener("mousemove", (e) => {
-	if (e.buttons) togglePixel(e.clientY, e.clientX);
+	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
+
+	if (e.buttons & 1) makePixelLive(game_area_image, e.clientY, e.clientX);
+	if (e.buttons & 2) makePixelDead(game_area_image, e.clientY, e.clientX);
+
+	game_area_context.putImageData(game_area_image, 0, 0);
 });
 
 step();
