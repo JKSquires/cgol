@@ -19,3 +19,7 @@ body {
 #controls_drag {
 	cursor: move;
 }
+
+#game_area {
+	image-rendering: pixelated;
+}

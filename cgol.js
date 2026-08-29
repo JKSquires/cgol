@@ -2,11 +2,13 @@ const game_area = document.getElementById("game_area");
 const controls = document.getElementById("controls");
 const controls_drag = document.getElementById("controls_drag");
 const step_time_slider = document.getElementById("step_time_slider");
+const scale_slider = document.getElementById("scale_slider");
 const toggle_run_button = document.getElementById("toggle_run_button");
 
 const game_area_context = game_area.getContext("2d");
 let run = true;
 let step_time = step_time_slider.value;
+let scale = scale_slider.value;
 let drag_controls = false;
 
 
@@ -53,6 +55,7 @@ function resizeCanvas() {
 	game_area.height = window.innerHeight;
 
 	draw();
+	game_area.style.height = (game_area.height * scale) + "px";
 }
 
 function step() {
@@ -69,10 +72,14 @@ function toggle_run() {
 function setPixel(mouse_event) {
 	if (drag_controls) return;
 
+	function setPixelState(stateFunc) {
+		stateFunc(game_area_image, Math.floor((mouse_event.clientY + window.scrollY) / scale), Math.floor((mouse_event.clientX + window.scrollX) / scale));
+	}
+
 	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
 
-	if (mouse_event.buttons & 1) makePixelLive(game_area_image, mouse_event.clientY, mouse_event.clientX);
-	if (mouse_event.buttons & 2) makePixelDead(game_area_image, mouse_event.clientY, mouse_event.clientX);
+	if (mouse_event.buttons & 1) setPixelState(makePixelLive);
+    if (mouse_event.buttons & 2) setPixelState(makePixelDead);
 
 	game_area_context.putImageData(game_area_image, 0, 0);
 }
@@ -101,6 +108,11 @@ toggle_run();
 
 step_time_slider.addEventListener("change", () => {
 	step_time = step_time_slider.value;
+});
+
+scale_slider.addEventListener("change", () => {
+	scale = scale_slider.value;
+	game_area.style.height = (game_area.height * scale) + "px";
 });
 
 game_area.addEventListener("mousemove", setPixel);
