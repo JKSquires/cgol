@@ -51,10 +51,13 @@ function draw() {
 }
 
 function resizeCanvas() {
+	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
 	game_area.width = window.innerWidth;
 	game_area.height = window.innerHeight;
 
 	draw();
+	game_area_context.putImageData(game_area_image, 0, 0);
+
 	game_area.style.height = (game_area.height * scale) + "px";
 }
 
