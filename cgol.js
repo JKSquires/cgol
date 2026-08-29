@@ -69,17 +69,28 @@ function toggle_run() {
 	toggle_run_button.innerText = run ? "Pause" : "Unpause";
 }
 
-function setPixel(mouse_event) {
+function setPixel(e) {
 	if (drag_controls) return;
 
 	function setPixelState(stateFunc) {
-		stateFunc(game_area_image, Math.floor((mouse_event.clientY + window.scrollY) / scale), Math.floor((mouse_event.clientX + window.scrollX) / scale));
+		stateFunc(game_area_image, Math.floor((e.clientY + window.scrollY) / scale), Math.floor((e.clientX + window.scrollX) / scale));
 	}
 
 	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
 
-	if (mouse_event.buttons & 1) setPixelState(makePixelLive);
-    if (mouse_event.buttons & 2) setPixelState(makePixelDead);
+	if (e.buttons & 1) setPixelState(makePixelLive);
+    if (e.buttons & 2) setPixelState(makePixelDead);
+
+	if (e.touches) {
+		let row = Math.floor((e.touches[0].clientY + window.scrollY) / scale);
+		let col = Math.floor((e.touches[0].clientX + window.scrollX) / scale);
+
+		if (game_area_image.data[row * (game_area.width * 4) + col * 4]) {
+			makePixelDead(game_area_image, row, col);
+		} else {
+			makePixelLive(game_area_image, row, col);
+		}
+	}
 
 	game_area_context.putImageData(game_area_image, 0, 0);
 }
@@ -117,5 +128,6 @@ scale_slider.addEventListener("change", () => {
 
 game_area.addEventListener("mousemove", setPixel);
 game_area.addEventListener("mousedown", setPixel);
+game_area.addEventListener("touchstart", setPixel);
 
 step();
