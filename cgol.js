@@ -134,14 +134,14 @@ function setPixel(e) {
 	if (drag_controls) return;
 
 	function setPixelState(stateFunc) {
-		stateFunc(Math.floor(((window.innerHeight - e.clientY) + window.scrollY) / scale), Math.floor((e.clientX + window.scrollX) / scale));
+		stateFunc(Math.floor(game_area.height - ((e.clientY + window.scrollY) / scale)), Math.floor((e.clientX + window.scrollX) / scale));
 	}
 
 	if (e.buttons & 1) setPixelState(makePixelLive);
     if (e.buttons & 2) setPixelState(makePixelDead);
 
 	if (e.touches) {
-		let row = Math.floor((e.touches[0].clientY + window.scrollY) / scale);
+		let row = Math.floor(game_area.height - ((e.clientY + window.scrollY) / scale));
 		let col = Math.floor((e.touches[0].clientX + window.scrollX) / scale);
 
 		if (game_area_image.data[row * (game_area.width * 4) + col * 4]) {
