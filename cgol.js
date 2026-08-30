@@ -5,21 +5,36 @@ const step_time_slider = document.getElementById("step_time_slider");
 const scale_slider = document.getElementById("scale_slider");
 const toggle_run_button = document.getElementById("toggle_run_button");
 
-const game_area_context = game_area.getContext("2d");
+const gl = game_area.getContext("webgl2", { preserveDrawingBuffer: true });
+// FIXME: should error-check gl
+const texture = gl.createTexture();
+const position_buffer = gl.createBuffer();
+const texture_coord_buffer = gl.createBuffer(); // TODO: rm
+let vertex_position_location;
+let screen_texture_location;
+let texture_coord_location; // TODO: rm
+
 let run = true;
 let step_time = step_time_slider.value;
 let scale = scale_slider.value;
 let drag_controls = false;
 
 
-function makePixelLive(buffer_image, row, col) {
+function readPixels() {
+	const buffer = new Uint8Array(game_area.width * game_area.height * 4);
+	gl.readPixels(0, 0, game_area.width, game_area.height, gl.RGBA, gl.UNSIGNED_BYTE, buffer);
+
+	return buffer;
+}
+
+function makePixelLive(buffer_image, row, col) { // FIXME: make work with WebGL
 	buffer_image.data[row * (game_area.width * 4) + col * 4] = 255;
 	buffer_image.data[row * (game_area.width * 4) + col * 4 + 1] = 255;
 	buffer_image.data[row * (game_area.width * 4) + col * 4 + 2] = 255;
 	buffer_image.data[row * (game_area.width * 4) + col * 4 + 3] = 255;
 }
 
-function makePixelDead(buffer_image, row, col) {
+function makePixelDead(buffer_image, row, col) { // FIXME: make work with WebGL
 	buffer_image.data[row * (game_area.width * 4) + col * 4] = 0;
 	buffer_image.data[row * (game_area.width * 4) + col * 4 + 1] = 0;
 	buffer_image.data[row * (game_area.width * 4) + col * 4 + 2] = 0;
@@ -27,38 +42,41 @@ function makePixelDead(buffer_image, row, col) {
 }
 
 function draw() {
-	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
-	const buffer_image = game_area_context.createImageData(game_area_image);
+	// TODO: look through everything in here and see if we can stick some things in initWebGL to run once instead of on every draw
+	gl.clearColor(0.0, 0.0, 0.0, 0.0);
+	gl.clearDepth(1.0); // TODO: do we need this?
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-	let i = 0;
-	for (let col = 0; col < game_area.width; col++) {
-		for (let row = 0; row < game_area.height; row++) {
-			let is_live = (game_area_image.data[row * (game_area.width * 4) + col * 4] != 0);
+	gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
+	gl.vertexAttribPointer(
+		vertex_position_location, // index
+		2, // size
+		gl.FLOAT, // type
+		false, // normalized
+		0, // stride
+		0 // offset
+	);
+	gl.enableVertexAttribArray(vertex_position_location);
 
-			let count_live = 0;
-			for (let c_col = -1; c_col <= 1; c_col++) {
-				for (let c_row = -1; c_row <= 1; c_row++) {
-					if (c_col == 0 && c_row == 0) continue;
-					if (col + c_col < 0 || col + c_col >= game_area.width || row + c_row < 0 || row + c_row >= game_area.height) continue;
-					if (game_area_image.data[(row + c_row) * (game_area.width * 4) + (col + c_col) * 4]) count_live++;
-				}
-			}
-			if (count_live == 3 || (is_live && count_live == 2)) makePixelLive(buffer_image, row, col);
-		}
-	}
+	/* TODO: rm */
+	gl.bindBuffer(gl.ARRAY_BUFFER, texture_coord_buffer);
+	gl.vertexAttribPointer(
+		texture_coord_location, // index
+		2, // size
+		gl.FLOAT, // type
+		false, // normalized
+		0, // stride
+		0 // offset
+	);
+	gl.enableVertexAttribArray(texture_coord_location);
+	/**/
 
-	game_area_context.putImageData(buffer_image, 0, 0);
-}
+	gl.activeTexture(gl.TEXTURE0);
+	gl.bindTexture(gl.TEXTURE_2D, texture);
 
-function resizeCanvas() {
-	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
-	game_area.width = window.innerWidth;
-	game_area.height = window.innerHeight;
+	gl.uniform1i(screen_texture_location, 0);
 
-	draw();
-	game_area_context.putImageData(game_area_image, 0, 0);
-
-	game_area.style.height = (game_area.height * scale) + "px";
+	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
 function step() {
@@ -72,14 +90,14 @@ function toggle_run() {
 	toggle_run_button.innerText = run ? "Pause" : "Unpause";
 }
 
-function setPixel(e) {
+function setPixel(e) { // FIXME: make work with WebGL
 	if (drag_controls) return;
 
 	function setPixelState(stateFunc) {
 		stateFunc(game_area_image, Math.floor((e.clientY + window.scrollY) / scale), Math.floor((e.clientX + window.scrollX) / scale));
 	}
 
-	const game_area_image = game_area_context.getImageData(0, 0, game_area.width, game_area.height);
+	const game_area_image = readPixels(); // TODO: maybe just read the one pixel...
 
 	if (e.buttons & 1) setPixelState(makePixelLive);
     if (e.buttons & 2) setPixelState(makePixelDead);
@@ -95,12 +113,120 @@ function setPixel(e) {
 		}
 	}
 
-	game_area_context.putImageData(game_area_image, 0, 0);
+	//gl.putImageData(game_area_image, 0, 0);
 }
 
+function createTexture() {
+	gl.texImage2D(
+		gl.TEXTURE_2D, // target
+		0, // level
+		gl.RGBA, // internal format
+		//game_area.width, // width // TODO: uncomment
+		//game_area.height, // height // TODO: uncomment
+		4, 4, // TODO: rm
+		0, // border
+		gl.RGBA, // source format
+		gl.UNSIGNED_BYTE, // source type
+		//new Uint8Array(game_area.width * game_area.height * 4) // source data // TODO: uncomment
+		/* TODO: rm */
+		new Uint8Array([
+			0, 0, 0, 255,       255, 0, 0, 255,     255, 255, 0, 255,       0, 255, 0, 255,
+			0, 255, 255, 255,   0, 0, 255, 255,     255, 0, 255, 255,       255, 255, 255, 255,
+			0, 127, 127, 255,   0, 0, 127, 255,     127, 0, 127, 255,       127, 127, 127, 255,
+			0, 0, 0, 255,       127, 0, 0, 255,     127, 127, 0, 255,       0, 127, 0, 255,
+		])
+		/**/
+	);
+}
 
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
+function initWebGL(vsh, fsh) {
+	function loadShader(type, source) {
+		const shader = gl.createShader(type);
+
+		gl.shaderSource(shader, source);
+		gl.compileShader(shader);
+
+		if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+			console.log("Issue compiling shader:\n" + gl.getShaderInfoLog(shader));
+			gl.deleteShader(shader);
+
+			return null;
+		}
+
+		return shader;
+	}
+
+	if (vsh === null) {
+		console.log("Issue reading vertex shader");
+		return false;
+	}
+	if (fsh === null) {
+		console.log("Issue reading fragment shader");
+		return false;
+	}
+
+	const vertex_shader = loadShader(gl.VERTEX_SHADER, vsh);
+	const fragment_shader = loadShader(gl.FRAGMENT_SHADER, fsh);
+
+	const shader_program = gl.createProgram();
+	gl.attachShader(shader_program, vertex_shader);
+	gl.attachShader(shader_program, fragment_shader);
+	gl.linkProgram(shader_program);
+	if (!gl.getProgramParameter(shader_program, gl.LINK_STATUS)) {
+		console.log("Issue initializing shader program:\n" + gl.getProgramInfoLog(shader_program));
+		return;
+	}
+
+	vertex_position_location = gl.getAttribLocation(shader_program, "vertex_position");
+	texture_coord_location = gl.getAttribLocation(shader_program, "texture_coord"); // TODO: rm
+	screen_texture_location = gl.getUniformLocation(shader_program, "screen_texture");
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+			1.0, 1.0,
+			-1.0, 1.0,
+			1.0, -1.0,
+			-1.0, -1.0
+		]), gl.STATIC_DRAW);
+
+	/* TODO: rm */ 
+	gl.bindBuffer(gl.ARRAY_BUFFER, texture_coord_buffer);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+			1.0, 0.0,
+			0.0, 0.0,
+			1.0, 1.0,
+			0.0, 1.0
+		]), gl.STATIC_DRAW);
+	/**/
+
+	// do we want to do gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); ?
+
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+	gl.useProgram(shader_program);
+
+	return true;
+}
+
+function resizeCanvas() {
+	//const game_area_image = readPixels(); // TODO: preserve pixels by copying into new resized texture maybe?
+	game_area.width = window.innerWidth;
+	game_area.height = window.innerHeight;
+	// TODO: change texture size I think, idk yet (maybe something with createTexture)
+
+	gl.viewport(0, 0, game_area.width, game_area.height);
+
+	createTexture();
+
+	draw();
+	//gl.putImageData(game_area_image, 0, 0);
+
+	game_area.style.height = (game_area.height * scale) + "px";
+}
+
 
 controls_drag.addEventListener("mousedown", () => {
 	drag_controls = true;
@@ -133,4 +259,18 @@ game_area.addEventListener("mousemove", setPixel);
 game_area.addEventListener("mousedown", setPixel);
 game_area.addEventListener("touchstart", setPixel);
 
-step();
+
+gl.bindTexture(gl.TEXTURE_2D, texture);
+
+Promise.all([
+	fetch("cgol.vsh").then((res) => (res.ok ? res.text() : null)),
+	fetch("cgol.fsh").then((res) => (res.ok ? res.text() : null))
+]).then((shader_sources) => {
+	initWebGL(shader_sources[0], shader_sources[1]);
+
+	resizeCanvas();
+	// TODO: error-checking?
+	window.addEventListener("resize", resizeCanvas /* TODO: maybe error-checking in here too */);
+
+	//step(); // TODO: uncomment; commented for now while testing
+});
