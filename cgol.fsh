@@ -10,7 +10,7 @@ out highp vec4 fragColor;
 
 void main() {
 	ivec2 tex_size = textureSize(screen_texture, 0);
-	ivec2 tex_coord = ivec2(gl_FragCoord.x, tex_size.y - int(gl_FragCoord.y));
+	ivec2 tex_coord = ivec2(gl_FragCoord.xy);
 	if (draw_next) {
 		bool is_live = (texelFetch(screen_texture, tex_coord, 0).a == 1.0);
 

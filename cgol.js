@@ -15,7 +15,7 @@ const tex_info = {
 	type: gl.UNSIGNED_BYTE
 };
 
-const texture = gl.createTexture();
+let texture = gl.createTexture();
 const position_buffer = gl.createBuffer();
 let vertex_position_location;
 let screen_texture_location;
@@ -49,7 +49,7 @@ function updateTexturePixel(x, y, rgba) {
 		src_data
 	);
 
-	draw();
+	draw(false);
 }
 
 function makePixelLive(row, col) {
@@ -60,7 +60,7 @@ function makePixelDead(row, col) {
 	updateTexturePixel(col, row, [0, 0, 0, 0]);
 }
 
-function draw() {
+function draw(do_step) {
 	// TODO: look through everything in here and see if we can stick some things in initWebGL to run once instead of on every draw
 	gl.clearColor(0.0, 0.0, 0.0, 0.0);
 	gl.clearDepth(1.0); // TODO: do we need this?
@@ -78,17 +78,49 @@ function draw() {
 	gl.enableVertexAttribArray(vertex_position_location);
 
 	gl.activeTexture(gl.TEXTURE0);
-	gl.bindTexture(gl.TEXTURE_2D, texture);
+	gl.bindTexture(tex_info.target, texture);
 
 	gl.uniform1i(screen_texture_location, 0);
 	gl.uniform1i(draw_next_location, run);
 
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+	let output_texture;
+	if (run && do_step) {
+		output_texture = gl.createTexture(); // TODO: should probably not create a new texture every step; instead, maybe we should initialize one with texture and just flip-flop the two instead of completely replacing texture
+		gl.bindTexture(tex_info.target, output_texture);
+		gl.texImage2D(
+			tex_info.target,
+			tex_info.level,
+			tex_info.format, // internal format
+			game_area.width, // width
+			game_area.height, // height
+			0, // border
+			tex_info.format, // source format
+			tex_info.type, // source type
+			null // source data
+		);
+		gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(tex_info.target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(tex_info.target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+		gl.bindTexture(tex_info.target, texture);
+
+		const frame_buffer = gl.createFramebuffer();
+		gl.bindFramebuffer(gl.FRAMEBUFFER, frame_buffer);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, tex_info.target, output_texture, 0);
+
+		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+		texture = output_texture;
+	}
 }
 
 function step() {
-	if (run) draw();
-	// TODO: will need to update texture from output of draw_next = true shader; maybe we can draw every step (regardless of run) and then have another "updateGameState()" or something run if (run) that takes the output and writes it to the texture?
+	draw(true);
 	setTimeout(step, step_time);
 }
 
@@ -102,7 +134,7 @@ function setPixel(e) {
 	if (drag_controls) return;
 
 	function setPixelState(stateFunc) {
-		stateFunc(Math.floor((e.clientY + window.scrollY) / scale), Math.floor((e.clientX + window.scrollX) / scale));
+		stateFunc(Math.floor(((window.innerHeight - e.clientY) + window.scrollY) / scale), Math.floor((e.clientX + window.scrollX) / scale));
 	}
 
 	if (e.buttons & 1) setPixelState(makePixelLive);
@@ -185,10 +217,10 @@ function initWebGL(vsh, fsh) {
 			-1.0, -1.0
 		]), gl.STATIC_DRAW);
 
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
 	gl.useProgram(shader_program);
 
@@ -202,7 +234,7 @@ function resizeCanvas() {
 
 	createTexture(); // TODO: save data from previous texture
 
-	draw();
+	draw(false);
 
 	game_area.style.height = (game_area.height * scale) + "px";
 }
@@ -240,7 +272,7 @@ game_area.addEventListener("mousedown", setPixel);
 game_area.addEventListener("touchstart", setPixel);
 
 
-gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.bindTexture(tex_info.target, texture);
 
 Promise.all([
 	fetch("cgol.vsh").then((res) => (res.ok ? res.text() : null)),
