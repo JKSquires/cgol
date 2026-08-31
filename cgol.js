@@ -16,6 +16,8 @@ const tex_info = {
 };
 
 let texture = gl.createTexture();
+let texture_buffer = gl.createTexture();
+const frame_buffer = gl.createFramebuffer();
 const position_buffer = gl.createBuffer();
 let vertex_position_location;
 let screen_texture_location;
@@ -85,37 +87,15 @@ function draw(do_step) {
 
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-	let output_texture;
 	if (run && do_step) {
-		output_texture = gl.createTexture(); // TODO: should probably not create a new texture every step; instead, maybe we should initialize one with texture and just flip-flop the two instead of completely replacing texture
-		gl.bindTexture(tex_info.target, output_texture);
-		gl.texImage2D(
-			tex_info.target,
-			tex_info.level,
-			tex_info.format, // internal format
-			game_area.width, // width
-			game_area.height, // height
-			0, // border
-			tex_info.format, // source format
-			tex_info.type, // source type
-			null // source data
-		);
-		gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-		gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-		gl.texParameteri(tex_info.target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-		gl.texParameteri(tex_info.target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-		gl.bindTexture(tex_info.target, texture);
-
-		const frame_buffer = gl.createFramebuffer();
 		gl.bindFramebuffer(gl.FRAMEBUFFER, frame_buffer);
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, tex_info.target, output_texture, 0);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, tex_info.target, texture_buffer, 0);
 
 		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-		texture = output_texture;
+		[texture, texture_buffer] = [texture_buffer, texture];
 	}
 }
 
@@ -153,6 +133,7 @@ function setPixel(e) {
 }
 
 function createTexture() {
+	gl.bindTexture(tex_info.target, texture);
 	gl.texImage2D(
 		tex_info.target,
 		tex_info.level,
@@ -164,6 +145,27 @@ function createTexture() {
 		tex_info.type, // source type
 		new Uint8Array(game_area.width * game_area.height * 4) // source data
 	);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+	gl.bindTexture(tex_info.target, texture_buffer);
+	gl.texImage2D(
+		tex_info.target,
+		tex_info.level,
+		tex_info.format, // internal format
+		game_area.width, // width
+		game_area.height, // height
+		0, // border
+		tex_info.format, // source format
+		tex_info.type, // source type
+		null // source data
+	);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(tex_info.target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 }
 
 function initWebGL(vsh, fsh) {
@@ -216,11 +218,6 @@ function initWebGL(vsh, fsh) {
 			1.0, -1.0,
 			-1.0, -1.0
 		]), gl.STATIC_DRAW);
-
-	gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(tex_info.target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-	gl.texParameteri(tex_info.target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
 	gl.useProgram(shader_program);
 
