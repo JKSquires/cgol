@@ -166,6 +166,8 @@ function createTexture() {
 	gl.texParameteri(tex_info.target, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 	gl.texParameteri(tex_info.target, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 	gl.texParameteri(tex_info.target, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+	gl.bindTexture(tex_info.target, texture);
 }
 
 function initWebGL(vsh, fsh) {
@@ -224,12 +226,39 @@ function initWebGL(vsh, fsh) {
 	return true;
 }
 
-function resizeCanvas() {
+function resizeCanvas(e) {
+	const initial = (e === null);
+
+	let use_width;
+	let use_height;
+	let pixel_buffer;
+	if (!initial) {
+		use_width = Math.min(game_area.width, window.innerWidth);
+		use_height = Math.min(game_area.height, window.innerHeight);
+
+		pixel_buffer = new Uint8Array(use_width * use_height * 4);
+		gl.readPixels(0, 0, use_width, use_height, tex_info.format, tex_info.type, pixel_buffer); // TODO: crop bottom y instead
+	}
+
 	game_area.width = window.innerWidth;
 	game_area.height = window.innerHeight;
 	gl.viewport(0, 0, game_area.width, game_area.height);
 
 	createTexture(); // TODO: save data from previous texture
+
+	if (!initial) {
+		gl.texSubImage2D(
+			tex_info.target,
+			tex_info.level,
+			0, // x offset
+			0, // y offset // TODO: place image at screen top instead of screen bottom
+			use_width,
+			use_height,
+			tex_info.format,
+			tex_info.type,
+			pixel_buffer
+		);
+	}
 
 	draw(false);
 
@@ -277,7 +306,7 @@ Promise.all([
 ]).then((shader_sources) => {
 	initWebGL(shader_sources[0], shader_sources[1]);
 
-	resizeCanvas();
+	resizeCanvas(null);
 	// TODO: error-checking?
 	window.addEventListener("resize", resizeCanvas /* TODO: maybe error-checking in here too */);
 
