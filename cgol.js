@@ -63,30 +63,15 @@ function makePixelDead(row, col) {
 }
 
 function draw(do_step) {
-	// TODO: look through everything in here and see if we can stick some things in initWebGL to run once instead of on every draw
-	gl.clearColor(0.0, 0.0, 0.0, 0.0);
-	gl.clearDepth(1.0); // TODO: do we need this?
-	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	gl.clear(gl.COLOR_BUFFER_BIT);
 
-	gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
-	gl.vertexAttribPointer(
-		vertex_position_location, // index
-		2, // size
-		gl.FLOAT, // type
-		false, // normalized
-		0, // stride
-		0 // offset
-	);
-	gl.enableVertexAttribArray(vertex_position_location);
-
-	gl.activeTexture(gl.TEXTURE0);
 	gl.bindTexture(tex_info.target, texture);
 
-	gl.uniform1i(screen_texture_location, 0);
 	gl.uniform1i(draw_next_location, run);
 
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
+	// FIXME: there seems to be a bug where when the screen is resized while run === true, the game steps every stingle resize frame
 	if (run && do_step) {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, frame_buffer);
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, tex_info.target, texture_buffer, 0);
@@ -208,6 +193,10 @@ function initWebGL(vsh, fsh) {
 		return;
 	}
 
+	gl.useProgram(shader_program);
+
+	gl.activeTexture(gl.TEXTURE0);
+
 	vertex_position_location = gl.getAttribLocation(shader_program, "vertex_position");
 	screen_texture_location = gl.getUniformLocation(shader_program, "screen_texture");
 	draw_next_location = gl.getUniformLocation(shader_program, "draw_next");
@@ -220,7 +209,21 @@ function initWebGL(vsh, fsh) {
 			-1.0, -1.0
 		]), gl.STATIC_DRAW);
 
-	gl.useProgram(shader_program);
+	gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
+	gl.vertexAttribPointer(
+		vertex_position_location, // index
+		2, // size
+		gl.FLOAT, // type
+		false, // normalized
+		0, // stride
+		0 // offset
+	);
+
+	gl.enableVertexAttribArray(vertex_position_location);
+
+	gl.uniform1i(screen_texture_location, 0);
+
+	gl.clearColor(0.0, 0.0, 0.0, 0.0);
 
 	return true;
 }
