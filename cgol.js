@@ -209,7 +209,6 @@ function initWebGL(vsh, fsh) {
 	}
 
 	vertex_position_location = gl.getAttribLocation(shader_program, "vertex_position");
-	texture_coord_location = gl.getAttribLocation(shader_program, "texture_coord"); // TODO: rm
 	screen_texture_location = gl.getUniformLocation(shader_program, "screen_texture");
 	draw_next_location = gl.getUniformLocation(shader_program, "draw_next");
 
@@ -226,39 +225,38 @@ function initWebGL(vsh, fsh) {
 	return true;
 }
 
-function resizeCanvas(e) {
-	const initial = (e === null);
+function resizeCanvas() {
+	const use_width = Math.min(game_area.width, window.innerWidth);
+	const use_height = Math.min(game_area.height, window.innerHeight);
 
-	let use_width;
-	let use_height;
-	let pixel_buffer;
-	if (!initial) {
-		use_width = Math.min(game_area.width, window.innerWidth);
-		use_height = Math.min(game_area.height, window.innerHeight);
-
-		pixel_buffer = new Uint8Array(use_width * use_height * 4);
-		gl.readPixels(0, 0, use_width, use_height, tex_info.format, tex_info.type, pixel_buffer); // TODO: crop bottom y instead
-	}
+	const pixel_buffer = new Uint8Array(use_width * use_height * 4);
+	gl.readPixels(
+		0, // x
+		game_area.height - use_height, // y
+		use_width,
+		use_height,
+		tex_info.format,
+		tex_info.type,
+		pixel_buffer
+	);
 
 	game_area.width = window.innerWidth;
 	game_area.height = window.innerHeight;
 	gl.viewport(0, 0, game_area.width, game_area.height);
 
-	createTexture(); // TODO: save data from previous texture
+	createTexture();
 
-	if (!initial) {
-		gl.texSubImage2D(
-			tex_info.target,
-			tex_info.level,
-			0, // x offset
-			0, // y offset // TODO: place image at screen top instead of screen bottom
-			use_width,
-			use_height,
-			tex_info.format,
-			tex_info.type,
-			pixel_buffer
-		);
-	}
+	gl.texSubImage2D(
+		tex_info.target,
+		tex_info.level,
+		0, // x offset
+		game_area.height - use_height, // y offset
+		use_width,
+		use_height,
+		tex_info.format,
+		tex_info.type,
+		pixel_buffer
+	);
 
 	draw(false);
 
@@ -306,7 +304,7 @@ Promise.all([
 ]).then((shader_sources) => {
 	initWebGL(shader_sources[0], shader_sources[1]);
 
-	resizeCanvas(null);
+	resizeCanvas();
 	// TODO: error-checking?
 	window.addEventListener("resize", resizeCanvas /* TODO: maybe error-checking in here too */);
 
