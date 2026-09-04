@@ -17,10 +17,9 @@ void main() {
 		int count_live = 0;
 		for (int col = 0; col < 3; col++) {
 			for (int row = 0; row < 3; row++) {
-				ivec2 neighbor = (tex_coord + ivec2(col, row) - ivec2(1) + tex_size) % tex_size;
-
 				if (col == 1 && row == 1) continue;
 
+				ivec2 neighbor = (tex_coord + ivec2(col, row) - ivec2(1) + tex_size) % tex_size;
 				if (texelFetch(screen_texture, neighbor, 0).a == 1.0) count_live++;
 			}
 		}

@@ -5,20 +5,12 @@ const step_time_slider = document.getElementById("step_time_slider");
 const scale_slider = document.getElementById("scale_slider");
 const toggle_run_button = document.getElementById("toggle_run_button");
 
-const gl = game_area.getContext("webgl2", { preserveDrawingBuffer: true });
-// FIXME: should error-check gl
-
-const tex_info = {
-	target: gl.TEXTURE_2D,
-	level: 0,
-	format: gl.RGBA,
-	type: gl.UNSIGNED_BYTE
-};
-
-let texture = gl.createTexture();
-let texture_buffer = gl.createTexture();
-const frame_buffer = gl.createFramebuffer();
-const position_buffer = gl.createBuffer();
+let gl;
+let tex_info;
+let texture;
+let texture_buffer;
+let frame_buffer;
+let position_buffer;
 let vertex_position_location;
 let screen_texture_location;
 let draw_next_location;
@@ -156,6 +148,24 @@ function createTexture() {
 }
 
 function initWebGL(vsh, fsh) {
+	gl = game_area.getContext("webgl2", { preserveDrawingBuffer: true });
+	if (gl === null) {
+		console.log("Issue initializing WebGL context");
+		return false;
+	}
+
+	tex_info = {
+		target: gl.TEXTURE_2D,
+		level: 0,
+		format: gl.RGBA,
+		type: gl.UNSIGNED_BYTE
+	};
+
+	texture = gl.createTexture();
+	texture_buffer = gl.createTexture();
+	frame_buffer = gl.createFramebuffer();
+	position_buffer = gl.createBuffer();
+
 	function loadShader(type, source) {
 		const shader = gl.createShader(type);
 
@@ -299,17 +309,19 @@ game_area.addEventListener("mousedown", setPixel);
 game_area.addEventListener("touchstart", setPixel);
 
 
-gl.bindTexture(tex_info.target, texture);
-
 Promise.all([
 	fetch("cgol.vsh").then((res) => (res.ok ? res.text() : null)),
 	fetch("cgol.fsh").then((res) => (res.ok ? res.text() : null))
 ]).then((shader_sources) => {
-	initWebGL(shader_sources[0], shader_sources[1]);
+	if (initWebGL(shader_sources[0], shader_sources[1]) == false) {
+		console.log("Issue initializing WebGL");
+		return;
+	}
 
 	resizeCanvas();
 	// TODO: error-checking?
-	window.addEventListener("resize", resizeCanvas /* TODO: maybe error-checking in here too */);
+
+	window.addEventListener("resize", resizeCanvas);
 
 	step();
 });
